@@ -81,4 +81,132 @@
 </div>
 
 <script>
-const video = document.getElementById('video
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const preview = document.getElementById('preview');
+const photoPreview = document.getElementById('photoPreview');
+const captureBtn = document.getElementById('captureBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const cameraSection = document.getElementById('cameraSection');
+const formSection = document.getElementById('formSection');
+const saveBtn = document.getElementById('saveBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const statusEl = document.getElementById('status');
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = stream;
+  } catch (e) {
+    alert('無法開啟相機，請用「選擇相簿」或允許相機權限。');
+  }
+}
+
+startCamera();
+
+captureBtn.onclick = () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  showForm(dataUrl);
+};
+
+uploadBtn.onclick = () => fileInput.click();
+fileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => showForm(reader.result);
+  reader.readAsDataURL(file);
+};
+
+function showForm(dataUrl) {
+  photoPreview.src = dataUrl;
+  cameraSection.classList.add('hidden');
+  formSection.classList.remove('hidden');
+  analyzeWithAI(dataUrl);
+}
+
+async function analyzeWithAI(dataUrl) {
+  statusEl.className = 'status';
+  statusEl.textContent = 'AI 正在分析酒標...';
+  statusEl.classList.add('success');
+  statusEl.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: dataUrl, analyzeOnly: true }),
+    });
+    const data = await res.json();
+
+    if (data.success && data.analysis) {
+      const a = data.analysis;
+      document.getElementById('name').value = a.name || '';
+      document.getElementById('type').value = a.type || '其他';
+      document.getElementById('winery').value = a.winery || '';
+      document.getElementById('vintage').value = a.vintage || '';
+      document.getElementById('grapes').value = (a.grapes || []).join(', ');
+      document.getElementById('region').value = a.region || '';
+      document.getElementById('country').value = a.country || '其他';
+      if (a.notes) document.getElementById('notes').value = a.notes;
+      statusEl.textContent = '分析完成！請檢查並修改後再儲存。';
+    } else {
+      throw new Error(data.error || '分析失敗');
+    }
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'AI 分析失敗：' + e.message + '（可手動填寫）';
+  }
+}
+
+retakeBtn.onclick = () => {
+  formSection.classList.add('hidden');
+  cameraSection.classList.remove('hidden');
+};
+
+saveBtn.onclick = async () => {
+  const payload = {
+    imageBase64: photoPreview.src,
+    name: document.getElementById('name').value,
+    type: document.getElementById('type').value,
+    winery: document.getElementById('winery').value,
+    vintage: document.getElementById('vintage').value,
+    grapes: document.getElementById('grapes').value,
+    region: document.getElementById('region').value,
+    country: document.getElementById('country').value,
+    purchasePrice: document.getElementById('purchasePrice').value,
+    onlinePrice: document.getElementById('onlinePrice').value,
+    notes: document.getElementById('notes').value,
+  };
+
+  statusEl.className = 'status';
+  statusEl.textContent = '正在寫入 Notion...';
+  statusEl.classList.add('success');
+  statusEl.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      statusEl.textContent = `成功！已寫入 Notion：${data.pageUrl}`;
+    } else {
+      throw new Error(data.error || '未知錯誤');
+    }
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusEl.textContent = '失敗：' + e.message;
+    statusEl.style.display = 'block';
+  }
+};
+</script>
+</body>
+</html>
