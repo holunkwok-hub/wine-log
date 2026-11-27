@@ -2,7 +2,12 @@ import { Client } from "@notionhq/client";
 import OpenAI from "openai";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// 用 xAI Grok（OpenAI 兼容接口）
+const openai = new OpenAI({
+  apiKey: process.env.XAI_API_KEY,
+  baseURL: "https://api.x.ai/v1",
+});
 
 const DATA_SOURCE_ID = process.env.NOTION_DATA_SOURCE_ID || "425242c0-587d-81a7-b97c-000b546b91df";
 
@@ -18,14 +23,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing image" });
     }
 
-    // 如果只係分析（唔寫入 Notion）
     if (analyzeOnly) {
       if (!imageBase64) return res.status(400).json({ error: "Missing image for analysis" });
       const analysis = await analyzeWineLabel(imageBase64);
       return res.status(200).json({ success: true, analysis });
     }
 
-    // 正常流程：用表單資料（或重新分析）寫入 Notion
     let analysis = {
       name: name || "未命名酒",
       type: type || "其他",
@@ -37,7 +40,6 @@ export default async function handler(req, res) {
       notes: notes || "",
     };
 
-    // 如果冇提供完整資料，就再分析一次
     if (!name && imageBase64) {
       analysis = { ...analysis, ...(await analyzeWineLabel(imageBase64)) };
     }
@@ -61,7 +63,7 @@ export default async function handler(req, res) {
 
 async function analyzeWineLabel(imageBase64) {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "grok-4.1-fast",
     messages: [
       {
         role: "user",
