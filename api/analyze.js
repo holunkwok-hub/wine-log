@@ -12,19 +12,38 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, notes, purchasePrice, onlinePrice } = req.body;
+    const { imageBase64, analyzeOnly, notes, purchasePrice, onlinePrice, name, type, winery, vintage, grapes, region, country } = req.body;
 
-    if (!imageBase64) {
+    if (!imageBase64 && !analyzeOnly) {
       return res.status(400).json({ error: "Missing image" });
     }
 
-    // 1. 用 Vision AI 分析酒標
-    const analysis = await analyzeWineLabel(imageBase64);
+    // 如果只係分析（唔寫入 Notion）
+    if (analyzeOnly) {
+      if (!imageBase64) return res.status(400).json({ error: "Missing image for analysis" });
+      const analysis = await analyzeWineLabel(imageBase64);
+      return res.status(200).json({ success: true, analysis });
+    }
 
-    // 2. 建立 Notion page
+    // 正常流程：用表單資料（或重新分析）寫入 Notion
+    let analysis = {
+      name: name || "未命名酒",
+      type: type || "其他",
+      winery: winery || "",
+      vintage: vintage ? Number(vintage) : null,
+      grapes: grapes ? grapes.split(",").map(g => g.trim()).filter(Boolean) : [],
+      region: region || "",
+      country: country || "其他",
+      notes: notes || "",
+    };
+
+    // 如果冇提供完整資料，就再分析一次
+    if (!name && imageBase64) {
+      analysis = { ...analysis, ...(await analyzeWineLabel(imageBase64)) };
+    }
+
     const page = await createNotionPage({
       ...analysis,
-      notes: notes || analysis.notes || "",
       purchasePrice: purchasePrice ? Number(purchasePrice) : null,
       onlinePrice: onlinePrice ? Number(onlinePrice) : null,
     });
