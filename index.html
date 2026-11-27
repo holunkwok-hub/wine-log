@@ -57,8 +57,26 @@
   <input id="vintage" type="number" placeholder="2015">
   <label>葡萄品種（用逗號分隔）</label>
   <input id="grapes" placeholder="Cabernet Sauvignon, Merlot">
-  <label>產區</label>
-  <input id="region" placeholder="Margaux, Bordeaux">
+<label>產區 / 地區</label>
+<input id="region" list="regionList" placeholder="例如：Bordeaux, Burgundy, Napa Valley">
+<datalist id="regionList">
+  <option value="Bordeaux">
+  <option value="Burgundy">
+  <option value="Champagne">
+  <option value="Rhône">
+  <option value="Loire">
+  <option value="Alsace">
+  <option value="Tuscany">
+  <option value="Piedmont">
+  <option value="Rioja">
+  <option value="Priorat">
+  <option value="Napa Valley">
+  <option value="Sonoma">
+  <option value="Barossa Valley">
+  <option value="Marlborough">
+  <option value="Mosel">
+  <option value="其他">
+</datalist>
   <label>國家</label>
   <select id="country">
     <option>法國</option>
