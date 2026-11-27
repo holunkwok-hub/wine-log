@@ -123,7 +123,7 @@ async function createNotionPage(data) {
   properties.Status = { select: { name: "已飲" } };
 
   const response = await notion.pages.create({
-    parent: { type: "data_source_id", data_source_id: DATA_SOURCE_ID },
+    parent: { database_id: DATA_SOURCE_ID },
     properties,
     icon: { type: "emoji", emoji: "🍷" },
   });
