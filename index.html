@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wine Log - 拍照入庫</title>
+<title>Wine Log</title>
 <meta name="theme-color" content="#6b21a8">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -28,6 +28,11 @@
 <body>
 <h1>🍷 Wine Log</h1>
 <p class="subtitle">拍照 → AI 分析 → 自動寫入 Notion</p>
+
+<div style="display:flex; gap:8px; margin-bottom:16px;">
+  <button class="btn btn-primary" id="tabCapture" style="flex:1;">📸 拍照入庫</button>
+  <button class="btn btn-secondary" id="tabLibrary" style="flex:1;">📖 酒庫</button>
+</div>
 
 <div class="card" id="cameraSection">
   <video id="video" autoplay playsinline></video>
@@ -64,18 +69,12 @@
     <option value="Burgundy">
     <option value="Champagne">
     <option value="Rhône">
-    <option value="Loire">
-    <option value="Alsace">
     <option value="Tuscany">
-    <option value="Piedmont">
-    <option value="Rioja">
     <option value="Napa Valley">
-    <option value="Sonoma">
-    <option value="Barossa Valley">
     <option value="其他">
   </datalist>
   <label>細產區 / 村莊</label>
-  <input id="subregion" placeholder="例如：Beaune, Pauillac, Margaux">
+  <input id="subregion" placeholder="例如：Beaune, Pauillac">
   <label>國家</label>
   <select id="country">
     <option>法國</option>
@@ -97,6 +96,27 @@
   <div id="status" class="status"></div>
 </div>
 
+<div class="card hidden" id="librarySection">
+  <input id="searchInput" placeholder="搜尋酒名、酒莊..." style="margin-bottom:12px;">
+  <div style="display:flex; gap:8px; margin-bottom:12px;">
+    <select id="filterCountry" style="flex:1;">
+      <option value="">所有國家</option>
+      <option>法國</option>
+      <option>義大利</option>
+      <option>西班牙</option>
+      <option>德國</option>
+      <option>澳洲</option>
+      <option>美國</option>
+    </select>
+    <select id="sortBy" style="flex:1;">
+      <option value="date">按飲用時間</option>
+      <option value="country">按國家</option>
+      <option value="region">按地區</option>
+    </select>
+  </div>
+  <div id="wineList" style="display:grid; gap:12px;"></div>
+</div>
+
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -109,6 +129,67 @@ const formSection = document.getElementById('formSection');
 const saveBtn = document.getElementById('saveBtn');
 const retakeBtn = document.getElementById('retakeBtn');
 const statusEl = document.getElementById('status');
+
+const tabCapture = document.getElementById('tabCapture');
+const tabLibrary = document.getElementById('tabLibrary');
+const librarySection = document.getElementById('librarySection');
+const wineList = document.getElementById('wineList');
+const searchInput = document.getElementById('searchInput');
+const filterCountry = document.getElementById('filterCountry');
+const sortBy = document.getElementById('sortBy');
+
+tabCapture.onclick = () => {
+  librarySection.classList.add('hidden');
+  cameraSection.classList.remove('hidden');
+  formSection.classList.add('hidden');
+};
+
+tabLibrary.onclick = () => {
+  cameraSection.classList.add('hidden');
+  formSection.classList.add('hidden');
+  librarySection.classList.remove('hidden');
+  loadWines();
+};
+
+async function loadWines() {
+  wineList.innerHTML = '<p style="text-align:center;color:#aaa;">載入中...</p>';
+  const params = new URLSearchParams({
+    query: searchInput.value,
+    country: filterCountry.value,
+    sort: sortBy.value,
+  });
+
+  try {
+    const res = await fetch('/api/wines?' + params);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    if (data.wines.length === 0) {
+      wineList.innerHTML = '<p style="text-align:center;color:#aaa;">未有記錄</p>';
+      return;
+    }
+
+    wineList.innerHTML = data.wines.map(w => `
+      <div style="background:#222;border-radius:12px;padding:12px;">
+        <div style="font-weight:600;font-size:1.1rem;">${w.name}</div>
+        <div style="color:#aaa;font-size:0.9rem;margin-top:4px;">
+          ${w.winery || ''} ${w.vintage || ''} · ${w.country} ${w.region || ''}
+        </div>
+        <div style="margin-top:6px;font-size:0.85rem;color:#ccc;">
+          ${(w.grapes || []).join(', ')} ${w.subregion ? '· ' + w.subregion : ''}
+        </div>
+        ${w.notes ? `<div style="margin-top:8px;font-size:0.85rem;color:#ddd;">${w.notes}</div>` : ''}
+        <a href="${w.url}" target="_blank" style="color:#a855f7;font-size:0.8rem;display:inline-block;margin-top:8px;">在 Notion 開啟 →</a>
+      </div>
+    `).join('');
+  } catch (e) {
+    wineList.innerHTML = `<p style="color:#f87171;text-align:center;">載入失敗：${e.message}</p>`;
+  }
+}
+
+searchInput.oninput = () => loadWines();
+filterCountry.onchange = () => loadWines();
+sortBy.onchange = () => loadWines();
 
 async function startCamera() {
   try {
