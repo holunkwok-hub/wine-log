@@ -1,0 +1,13 @@
+{
+  "name": "wine-log-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "openai": "^4.52.0"
+  }
+}

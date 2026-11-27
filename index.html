@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wine Log - 影相入庫</title>
+<meta name="theme-color" content="#6b21a8">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root { --bg: #0f0f0f; --card: #1a1a1a; --accent: #a855f7; --text: #f5f5f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  h1 { text-align: center; font-size: 1.6rem; margin-bottom: 8px; }
+  .subtitle { text-align: center; color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  video, canvas, img#preview { width: 100%; border-radius: 12px; background: #000; }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: #333; color: white; }
+  input, select, textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #222; color: white; margin-top: 6px; font-size: 1rem; }
+  label { font-size: 0.85rem; color: #ccc; display: block; margin-top: 12px; }
+  .status { text-align: center; padding: 10px; border-radius: 10px; margin-top: 10px; display: none; }
+  .status.success { background: #166534; display: block; }
+  .status.error { background: #991b1b; display: block; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>🍷 Wine Log</h1>
+<p class="subtitle">影相 → AI 分析 → 自動寫入 Notion</p>
+
+<div class="card" id="cameraSection">
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" class="hidden"></canvas>
+  <img id="preview" class="hidden">
+  <button class="btn btn-primary" id="captureBtn">📸 影相</button>
+  <button class="btn btn-secondary" id="uploadBtn">或選擇相簿</button>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" class="hidden">
+</div>
+
+<div class="card hidden" id="formSection">
+  <img id="photoPreview" style="width:100%;border-radius:12px;margin-bottom:12px;">
+  <label>酒名 *</label>
+  <input id="name" placeholder="例如：Château Margaux 2015">
+  <label>類型</label>
+  <select id="type">
+    <option>紅酒</option>
+    <option>白酒</option>
+    <option>粉紅酒</option>
+    <option>汽酒</option>
+    <option>加強酒</option>
+    <option>其他</option>
+  </select>
+  <label>酒莊</label>
+  <input id="winery" placeholder="酒莊名稱">
+  <label>年份</label>
+  <input id="vintage" type="number" placeholder="2015">
+  <label>葡萄品種（用逗號分隔）</label>
+  <input id="grapes" placeholder="Cabernet Sauvignon, Merlot">
+  <label>產區</label>
+  <input id="region" placeholder="Margaux, Bordeaux">
+  <label>國家</label>
+  <select id="country">
+    <option>法國</option>
+    <option>義大利</option>
+    <option>西班牙</option>
+    <option>德國</option>
+    <option>澳洲</option>
+    <option>美國</option>
+    <option>其他</option>
+  </select>
+  <label>我買的價錢</label>
+  <input id="purchasePrice" type="number" placeholder="1200">
+  <label>網上價錢</label>
+  <input id="onlinePrice" type="number" placeholder="1500">
+  <label>個人 Notes</label>
+  <textarea id="notes" rows="3" placeholder="你的品酒筆記..."></textarea>
+  <button class="btn btn-primary" id="saveBtn">💾 儲存到 Notion</button>
+  <button class="btn btn-secondary" id="retakeBtn">重新影相</button>
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+// 簡單前端示範。完整 AI + Notion 寫入需要後端（見 README）。
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const preview = document.getElementById('preview');
+const photoPreview = document.getElementById('photoPreview');
+const captureBtn = document.getElementById('captureBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const cameraSection = document.getElementById('cameraSection');
+const formSection = document.getElementById('formSection');
+const saveBtn = document.getElementById('saveBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const statusEl = document.getElementById('status');
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = stream;
+  } catch (e) {
+    alert('無法開啟相機，請用「選擇相簿」或允許相機權限。');
+  }
+}
+
+startCamera();
+
+captureBtn.onclick = () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  showForm(dataUrl);
+};
+
+uploadBtn.onclick = () => fileInput.click();
+fileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => showForm(reader.result);
+  reader.readAsDataURL(file);
+};
+
+function showForm(dataUrl) {
+  photoPreview.src = dataUrl;
+  cameraSection.classList.add('hidden');
+  formSection.classList.remove('hidden');
+  // 這裡可以呼叫 AI 分析（需要後端）
+  // 目前先讓用戶手動填，或之後接 AI
+}
+
+retakeBtn.onclick = () => {
+  formSection.classList.add('hidden');
+  cameraSection.classList.remove('hidden');
+};
+
+saveBtn.onclick = async () => {
+  const payload = {
+    imageBase64: photoPreview.src,
+    notes: document.getElementById('notes').value,
+    purchasePrice: document.getElementById('purchasePrice').value,
+    onlinePrice: document.getElementById('onlinePrice').value,
+    // 其他欄位會由 AI 分析填寫，這裡可以覆蓋
+  };
+
+  statusEl.className = 'status';
+  statusEl.textContent = '正在分析酒標並寫入 Notion...';
+  statusEl.classList.add('success');
+  statusEl.style.display = 'block';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      statusEl.textContent = `成功！已寫入 Notion：${data.pageUrl}`;
+      // 可選：自動填入 AI 分析結果到表單
+      if (data.analysis) {
+        document.getElementById('name').value = data.analysis.name || '';
+        document.getElementById('winery').value = data.analysis.winery || '';
+        document.getElementById('vintage').value = data.analysis.vintage || '';
+        document.getElementById('region').value = data.analysis.region || '';
+        if (data.analysis.grapes) document.getElementById('grapes').value = data.analysis.grapes.join(', ');
+      }
+    } else {
+      throw new Error(data.error || '未知錯誤');
+    }
+  } catch (e) {
+    statusEl.className = 'status error';
+    statusEl.textContent = '失敗：' + e.message;
+    statusEl.style.display = 'block';
+  }
+};
+</script>
+</body>
+</html>
