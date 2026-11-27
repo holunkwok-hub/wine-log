@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wine Log - 影相入庫</title>
+<title>Wine Log - 拍照入庫</title>
 <meta name="theme-color" content="#6b21a8">
 <link rel="manifest" href="manifest.json">
 <style>
@@ -81,102 +81,4 @@
 </div>
 
 <script>
-// 簡單前端示範。完整 AI + Notion 寫入需要後端（見 README）。
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const preview = document.getElementById('preview');
-const photoPreview = document.getElementById('photoPreview');
-const captureBtn = document.getElementById('captureBtn');
-const uploadBtn = document.getElementById('uploadBtn');
-const fileInput = document.getElementById('fileInput');
-const cameraSection = document.getElementById('cameraSection');
-const formSection = document.getElementById('formSection');
-const saveBtn = document.getElementById('saveBtn');
-const retakeBtn = document.getElementById('retakeBtn');
-const statusEl = document.getElementById('status');
-
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    video.srcObject = stream;
-  } catch (e) {
-    alert('無法開啟相機，請用「選擇相簿」或允許相機權限。');
-  }
-}
-
-startCamera();
-
-captureBtn.onclick = () => {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  showForm(dataUrl);
-};
-
-uploadBtn.onclick = () => fileInput.click();
-fileInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => showForm(reader.result);
-  reader.readAsDataURL(file);
-};
-
-function showForm(dataUrl) {
-  photoPreview.src = dataUrl;
-  cameraSection.classList.add('hidden');
-  formSection.classList.remove('hidden');
-  // 這裡可以呼叫 AI 分析（需要後端）
-  // 目前先讓用戶手動填，或之後接 AI
-}
-
-retakeBtn.onclick = () => {
-  formSection.classList.add('hidden');
-  cameraSection.classList.remove('hidden');
-};
-
-saveBtn.onclick = async () => {
-  const payload = {
-    imageBase64: photoPreview.src,
-    notes: document.getElementById('notes').value,
-    purchasePrice: document.getElementById('purchasePrice').value,
-    onlinePrice: document.getElementById('onlinePrice').value,
-    // 其他欄位會由 AI 分析填寫，這裡可以覆蓋
-  };
-
-  statusEl.className = 'status';
-  statusEl.textContent = '正在分析酒標並寫入 Notion...';
-  statusEl.classList.add('success');
-  statusEl.style.display = 'block';
-
-  try {
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      statusEl.textContent = `成功！已寫入 Notion：${data.pageUrl}`;
-      // 可選：自動填入 AI 分析結果到表單
-      if (data.analysis) {
-        document.getElementById('name').value = data.analysis.name || '';
-        document.getElementById('winery').value = data.analysis.winery || '';
-        document.getElementById('vintage').value = data.analysis.vintage || '';
-        document.getElementById('region').value = data.analysis.region || '';
-        if (data.analysis.grapes) document.getElementById('grapes').value = data.analysis.grapes.join(', ');
-      }
-    } else {
-      throw new Error(data.error || '未知錯誤');
-    }
-  } catch (e) {
-    statusEl.className = 'status error';
-    statusEl.textContent = '失敗：' + e.message;
-    statusEl.style.display = 'block';
-  }
-};
-</script>
-</body>
-</html>
+const video = document.getElementById('video
