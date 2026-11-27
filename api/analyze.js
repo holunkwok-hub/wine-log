@@ -3,7 +3,6 @@ import OpenAI from "openai";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-// 用 xAI Grok（OpenAI 兼容接口）
 const openai = new OpenAI({
   apiKey: process.env.XAI_API_KEY,
   baseURL: "https://api.x.ai/v1",
@@ -17,11 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, analyzeOnly, notes, purchasePrice, onlinePrice, name, type, winery, vintage, grapes, region, country } = req.body;
-
-    if (!imageBase64 && !analyzeOnly) {
-      return res.status(400).json({ error: "Missing image" });
-    }
+    const { imageBase64, analyzeOnly, notes, purchasePrice, onlinePrice, name, type, winery, vintage, grapes, region, subregion, country } = req.body;
 
     if (analyzeOnly) {
       if (!imageBase64) return res.status(400).json({ error: "Missing image for analysis" });
@@ -36,6 +31,7 @@ export default async function handler(req, res) {
       vintage: vintage ? Number(vintage) : null,
       grapes: grapes ? grapes.split(",").map(g => g.trim()).filter(Boolean) : [],
       region: region || "",
+      subregion: subregion || "",
       country: country || "其他",
       notes: notes || "",
     };
@@ -63,7 +59,7 @@ export default async function handler(req, res) {
 
 async function analyzeWineLabel(imageBase64) {
   const response = await openai.chat.completions.create({
-   model: "grok-4-1-fast-reasoning",
+    model: "grok-4-1-fast-reasoning",
     messages: [
       {
         role: "user",
@@ -78,13 +74,14 @@ async function analyzeWineLabel(imageBase64) {
   "winery": "酒莊名稱",
   "vintage": 年份數字或 null,
   "grapes": ["葡萄品種1", "葡萄品種2"],
-  "region": "產區",
+  "region": "大區（例如 Bordeaux, Burgundy, Champagne, Napa Valley）",
+  "subregion": "細產區或村莊（例如 Beaune, Pauillac, Margaux），沒有就留空字串",
   "country": "法國" | "義大利" | "西班牙" | "德國" | "澳洲" | "美國" | "其他",
   "alcohol": 酒精含量數字或 null,
-  "notes": "簡短描述或品酒提示（可留空）"
+  "notes": "簡短描述（可留空）"
 }
 
-如果某項資料看不清或不確定，請填 null 或最合理的猜測。`,
+大區填主要產區，細產區填更具體地名。不確定就填最合理猜測或空字串。`,
           },
           {
             type: "image_url",
@@ -113,11 +110,10 @@ async function createNotionPage(data) {
   if (data.winery) properties.Winery = { rich_text: [{ text: { content: data.winery } }] };
   if (data.vintage) properties.Vintage = { number: data.vintage };
   if (data.grapes && data.grapes.length) {
-    properties["Grape Varieties"] = {
-      multi_select: data.grapes.map((g) => ({ name: g })),
-    };
+    properties["Grape Varieties"] = { multi_select: data.grapes.map(g => ({ name: g })) };
   }
   if (data.region) properties.Region = { rich_text: [{ text: { content: data.region } }] };
+  if (data.subregion) properties.Subregion = { rich_text: [{ text: { content: data.subregion } }] };
   if (data.country) properties.Country = { select: { name: data.country } };
   if (data.alcohol) properties["Alcohol %"] = { number: data.alcohol };
   if (data.purchasePrice) properties["Purchase Price"] = { number: data.purchasePrice };
