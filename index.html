@@ -57,26 +57,25 @@
   <input id="vintage" type="number" placeholder="2015">
   <label>葡萄品種（用逗號分隔）</label>
   <input id="grapes" placeholder="Cabernet Sauvignon, Merlot">
-<label>產區 / 地區</label>
-<input id="region" list="regionList" placeholder="例如：Bordeaux, Burgundy, Napa Valley">
-<datalist id="regionList">
-  <option value="Bordeaux">
-  <option value="Burgundy">
-  <option value="Champagne">
-  <option value="Rhône">
-  <option value="Loire">
-  <option value="Alsace">
-  <option value="Tuscany">
-  <option value="Piedmont">
-  <option value="Rioja">
-  <option value="Priorat">
-  <option value="Napa Valley">
-  <option value="Sonoma">
-  <option value="Barossa Valley">
-  <option value="Marlborough">
-  <option value="Mosel">
-  <option value="其他">
-</datalist>
+  <label>大區</label>
+  <input id="region" list="regionList" placeholder="例如：Burgundy, Bordeaux">
+  <datalist id="regionList">
+    <option value="Bordeaux">
+    <option value="Burgundy">
+    <option value="Champagne">
+    <option value="Rhône">
+    <option value="Loire">
+    <option value="Alsace">
+    <option value="Tuscany">
+    <option value="Piedmont">
+    <option value="Rioja">
+    <option value="Napa Valley">
+    <option value="Sonoma">
+    <option value="Barossa Valley">
+    <option value="其他">
+  </datalist>
+  <label>細產區 / 村莊</label>
+  <input id="subregion" placeholder="例如：Beaune, Pauillac, Margaux">
   <label>國家</label>
   <select id="country">
     <option>法國</option>
@@ -101,7 +100,6 @@
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const preview = document.getElementById('preview');
 const photoPreview = document.getElementById('photoPreview');
 const captureBtn = document.getElementById('captureBtn');
 const uploadBtn = document.getElementById('uploadBtn');
@@ -169,6 +167,7 @@ async function analyzeWithAI(dataUrl) {
       document.getElementById('vintage').value = a.vintage || '';
       document.getElementById('grapes').value = (a.grapes || []).join(', ');
       document.getElementById('region').value = a.region || '';
+      document.getElementById('subregion').value = a.subregion || '';
       document.getElementById('country').value = a.country || '其他';
       if (a.notes) document.getElementById('notes').value = a.notes;
       statusEl.textContent = '分析完成！請檢查並修改後再儲存。';
@@ -195,6 +194,7 @@ saveBtn.onclick = async () => {
     vintage: document.getElementById('vintage').value,
     grapes: document.getElementById('grapes').value,
     region: document.getElementById('region').value,
+    subregion: document.getElementById('subregion').value,
     country: document.getElementById('country').value,
     purchasePrice: document.getElementById('purchasePrice').value,
     onlinePrice: document.getElementById('onlinePrice').value,
@@ -222,7 +222,6 @@ saveBtn.onclick = async () => {
   } catch (e) {
     statusEl.className = 'status error';
     statusEl.textContent = '失敗：' + e.message;
-    statusEl.style.display = 'block';
   }
 };
 </script>
