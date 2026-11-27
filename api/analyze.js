@@ -63,7 +63,7 @@ export default async function handler(req, res) {
 
 async function analyzeWineLabel(imageBase64) {
   const response = await openai.chat.completions.create({
-    model: "grok-4.1-fast",
+   model: "grok-4-1-fast-reasoning",
     messages: [
       {
         role: "user",
